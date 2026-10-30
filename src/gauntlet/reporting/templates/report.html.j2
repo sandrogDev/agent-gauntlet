@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gauntlet · {{ run.suite }} · {{ run.run_id }}</title>
+<style>
+  :root {
+    --bg: #f7f6f2; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a64; --line: #e4e2da;
+    --pass: #1f7a4d; --pass-bg: #e6f3ec; --fail: #b3261e; --fail-bg: #fbe9e7;
+    --warn: #8a5a00; --warn-bg: #fdf3dc; --accent: #2d4b8e; --code: #f1efe8;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413; --panel: #1d1d1b; --ink: #ecebe6; --muted: #a09f98; --line: #2f2e2b;
+      --pass: #5cc48d; --pass-bg: #16301f; --fail: #f08a80; --fail-bg: #3a1916;
+      --warn: #e6b450; --warn-bg: #34280f; --accent: #8fb0ff; --code: #242421;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 64px; }
+  header h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; font-family: var(--mono); }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+       margin: 36px 0 12px; font-weight: 600; }
+  .cards { display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; margin: 18px -6px 0; }
+  .card { -webkit-flex: 1 1 150px; flex: 1 1 150px; margin: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card .k { color: var(--muted); font-size: 12px; }
+  .card .v { font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .card .s { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .bars { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 16px; }
+  .bar { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 6px 0; }
+  .bar > span:first-child { width: 170px; -webkit-flex: none; flex: none; }
+  .bar .track { -webkit-flex: 1; flex: 1; margin: 0 12px; height: 8px; background: var(--code); border-radius: 4px; overflow: hidden; }
+  .bar .fill { height: 100%; border-radius: 4px; }
+  .bar .n { width: 56px; text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+  .mono { font-family: var(--mono); font-size: 13px; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+           padding: 2px 8px; border-radius: 999px; }
+  .pass { color: var(--pass); background: var(--pass-bg); }
+  .fail { color: var(--fail); background: var(--fail-bg); }
+  .warn { color: var(--warn); background: var(--warn-bg); }
+  .muted { color: var(--muted); }
+  details.sc { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; }
+  details.sc > summary { list-style: none; cursor: pointer; padding: 12px 16px; }
+  .row { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-box-align: center; -webkit-align-items: center; align-items: center; }
+  .row > span { margin-right: 12px; }
+  .row > .grow { -webkit-box-flex: 1; -webkit-flex: 1; flex: 1; min-width: 0; }
+  details.sc > summary::-webkit-details-marker { display: none; }
+  details.sc[open] > summary { border-bottom: 1px solid var(--line); }
+  .body { padding: 12px 16px 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .chat { margin-top: 14px; }
+  .chat > .msg { margin-bottom: 6px; }
+  .msg { border-radius: 8px; padding: 8px 12px; font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+  .msg.user { background: var(--code); }
+  .msg.assistant { border: 1px solid var(--line); }
+  .msg.tool { font-family: var(--mono); font-size: 12px; background: var(--code); color: var(--muted); }
+  .msg.tool.err { color: var(--fail); }
+  .role { font-size: 11px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 2px; letter-spacing: .05em; }
+  .call { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+  .filters { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .filters button { font: inherit; font-size: 13px; padding: 4px 12px; border-radius: 999px; cursor: pointer;
+                    border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+  .filters button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+  footer { margin-top: 48px; color: var(--muted); font-size: 12px; }
+  @media (max-width: 640px) {
+    .row .hide-sm { display: none; }
+    .bar > span:first-child { width: 110px; }
+  }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>{{ run.suite }}</h1>
+  <p>run {{ run.run_id }} · {{ run.provider }} · seed {{ run.seed }} · {{ run.started_at.strftime("%Y-%m-%d %H:%M UTC") }} · gauntlet {{ run.gauntlet_version }}</p>
+</header>
+
+<section class="cards">
+  <div class="card"><div class="k">Pass rate</div><div class="v">{{ m.pass_rate | pct }}</div><div class="s">{{ m.passed }} / {{ m.scenarios }} scenarios</div></div>
+  <div class="card"><div class="k">Adversarial pass rate</div><div class="v">{{ m.adversarial_pass_rate | pct }}</div><div class="s">vs {{ m.baseline_pass_rate | pct }} on baseline scenarios</div></div>
+  <div class="card"><div class="k">Mean score</div><div class="v">{{ "%.2f" | format(m.mean_score) }}</div><div class="s">weighted checks</div></div>
+  <div class="card"><div class="k">Tool-call validity</div><div class="v">{{ m.tool_call_validity | pct }}</div><div class="s">{{ m.tool_calls }} calls · {{ m.tool_call_success_rate | pct }} succeeded</div></div>
+  <div class="card"><div class="k">Critical failures</div><div class="v">{{ m.critical_failures }}</div><div class="s">{{ m.errored }} errored</div></div>
+  <div class="card"><div class="k">Latency p95</div><div class="v">{{ "%.2f" | format(m.p95_latency_s) }}s</div><div class="s">{{ "{:,}".format(m.input_tokens) }} in · {{ "{:,}".format(m.output_tokens) }} out tok</div></div>
+</section>
+
+{% if m.pass_rate_by_mutator %}
+<h2>Robustness by attack</h2>
+<div class="bars">
+  {% for name, rate in m.pass_rate_by_mutator.items() %}
+  {% set colour = "var(--pass)" if rate >= 0.8 else ("var(--warn)" if rate >= 0.5 else "var(--fail)") %}
+  <div class="bar"><span class="mono">{{ name }}</span><div class="track"><div class="fill" style="width: {{ (rate * 100) | round(1) }}%; background: {{ colour }}"></div></div><span class="n">{{ rate | pct }}</span></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if m.failures_by_check %}
+<h2>Failures by check</h2>
+<div class="bars">
+  {% set top = (m.failures_by_check.values() | list | max) %}
+  {% for name, count in m.failures_by_check.items() %}
+  <div class="bar"><span class="mono">{{ name }}</span><div class="track"><div class="fill" style="width: {{ (count / top * 100) | round(1) }}%; background: var(--fail)"></div></div><span class="n">{{ count }}</span></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if comparison %}
+<h2>Compared with {{ comparison.baseline_id }}</h2>
+<div class="bars">
+  <table>
+    <tr><th>Metric</th><th>Delta</th></tr>
+    {% for name, delta in comparison.metric_deltas.items() %}
+    {% set good = (delta <= 0) if name.endswith("latency_s") else (delta >= 0) %}
+    <tr><td class="mono">{{ name }}</td><td><span class="badge {{ 'pass' if good else 'fail' }}">{{ "%+.4f" | format(delta) }}</span></td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+<h2>Scenarios</h2>
+<div class="filters" role="group" aria-label="Filter scenarios">
+  <button type="button" data-filter="all" aria-pressed="true">All</button>
+  <button type="button" data-filter="fail" aria-pressed="false">Failing</button>
+  <button type="button" data-filter="adv" aria-pressed="false">Adversarial</button>
+</div>
+<div id="scenarios">
+{% for r in run.results %}
+  {% set d = diffs.get(r.scenario.id) %}
+  <details class="sc" data-pass="{{ 'y' if r.passed else 'n' }}" data-adv="{{ 'y' if r.scenario.variant_of else 'n' }}">
+    <summary><div class="row">
+      <span class="badge {{ 'pass' if r.passed else 'fail' }}">{{ 'PASS' if r.passed else 'FAIL' }}</span>
+      <span class="grow"><span class="mono">{{ r.scenario.id }}</span>{% if r.scenario.description %} <span class="muted">· {{ r.scenario.description }}</span>{% endif %}</span>
+      <span class="hide-sm">{% if d and d.status.value in ("regressed", "degraded") %}<span class="badge fail">{{ d.status.value }}</span>{% elif d and d.status.value in ("fixed", "improved") %}<span class="badge pass">{{ d.status.value }}</span>{% endif %}</span>
+      <span class="mono hide-sm">{{ "%.2f" | format(r.score) }}</span>
+    </div></summary>
+    <div class="body">
+      <table>
+        <tr><th></th><th>Check</th><th>Severity</th><th>Detail</th></tr>
+        {% for c in r.checks %}
+        <tr>
+          <td>{% if c.skipped %}<span class="badge warn">SKIP</span>{% elif c.passed %}<span class="badge pass">OK</span>{% else %}<span class="badge fail">FAIL</span>{% endif %}</td>
+          <td class="mono">{{ c.label }}</td>
+          <td class="muted">{{ c.severity.value }}</td>
+          <td>{{ c.message }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      <div class="chat">
+        {% for msg in r.trace.messages %}
+          {% if msg.role == "user" %}
+          <div class="msg user"><span class="role">USER</span>{{ msg.content }}</div>
+          {% elif msg.role == "assistant" %}
+          <div class="msg assistant"><span class="role">AGENT</span>{{ msg.content }}{% for c in msg.tool_calls %}
+<span class="call">→ {{ c.name }}({{ c.arguments | tojson }})</span>{% endfor %}</div>
+          {% else %}
+          <div class="msg tool{{ ' err' if msg.is_error else '' }}"><span class="role">TOOL {{ 'ERROR' if msg.is_error else 'RESULT' }}</span>{{ msg.content }}</div>
+          {% endif %}
+        {% endfor %}
+        {% if r.trace.error %}<div class="msg tool err"><span class="role">RUN ERROR</span>{{ r.trace.error }}</div>{% endif %}
+      </div>
+      <p class="muted mono">{{ r.trace.steps }} steps · {{ "%.2f" | format(r.trace.latency_s) }}s · {{ r.trace.usage.input_tokens }}/{{ r.trace.usage.output_tokens }} tokens{% if r.scenario.variant_of %} · variant of {{ r.scenario.variant_of }} via {{ r.scenario.mutator }}{% endif %}</p>
+    </div>
+  </details>
+{% endfor %}
+</div>
+
+<footer>Generated by agent-gauntlet {{ run.gauntlet_version }}.</footer>
+</main>
+<script>
+  (function () {
+    var buttons = document.querySelectorAll(".filters button");
+    var items = document.querySelectorAll("#scenarios details");
+    buttons.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b === btn)); });
+        var f = btn.dataset.filter;
+        items.forEach(function (el) {
+          var show = f === "all" || (f === "fail" && el.dataset.pass === "n") || (f === "adv" && el.dataset.adv === "y");
+          el.style.display = show ? "" : "none";
+        });
+      });
+    });
+  })();
+</script>
+</body>
+</html>
